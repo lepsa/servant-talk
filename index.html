@@ -16,8 +16,253 @@
 	<body>
 		<div class="reveal">
 			<div class="slides">
-				<section>Slide 1</section>
-				<section>Slide 2</section>
+				<section>
+					APIs in Servant
+				</section>
+				<section data-markdown>
+					<textarea data-template>
+							### Who am I?
+	
+							Owen Harvey
+	
+							Software Developer
+	
+							CSIRO Data61: E&amp;D
+						</textarea>
+				</section>
+
+				<section>
+					<section>
+						<p>
+							Servant requires a fair degree of comfort with some advanced Haskell concepts.
+						</p>
+					</section>
+					<section>
+						<p>
+							Assumptions going into this talk
+							<ul>
+								<li>Know about typeclasses</li>
+								<li>Not afraid of mtl/transformers</li>
+								<li>Willing to handwave some advanced haskell extensions</li>
+							</ul>
+						</p>
+					</section>
+					<section>
+						<p>
+							You can safely assume this throughout
+						</p>
+						<pre><code class="language-haskell" data-trim data-noescape>
+							{-# LANGUAGE DataKinds             #-}
+							{-# LANGUAGE FlexibleContexts      #-}
+							{-# LANGUAGE FlexibleInstances     #-}
+							{-# LANGUAGE MultiParamTypeClasses #-}
+							{-# LANGUAGE OverloadedStrings     #-}
+							{-# LANGUAGE TypeFamilies          #-}
+							{-# LANGUAGE TypeOperators         #-}
+						</code></pre>
+					</section>
+				</section>
+
+				<section>
+					<section>
+						<h3>
+							What is Servant
+						</h3>
+						<p class="fragment" >
+							Servant is a type driven library for writing web clients and servers
+						</p>
+					</section>
+					<section>
+						<h3>
+							Why you should care
+						</h3>
+						<p>
+							<ul>
+								<li>
+									Composable APIs
+								</li>
+								<li>
+									Client generation from API type
+								</li>
+								<li>
+									Swagger/OpenAPI output (with a util library)
+								</li>
+								<li>
+									Enforced types from top to bottom
+								</li>
+							</ul>
+						</p>
+					</section>
+				</section>
+
+				<section>
+					<section>
+						<h3>
+							How Servant Works
+						</h3>
+					</section>
+					<section>
+						<p>
+							Servant is built around a set of combinators for building an API
+						</p>
+						<p>
+							Path, Query, Body, Method, Headers, etc.
+						</p>
+						<p>
+							
+						</p>
+					</section>
+				</section>
+
+				<section>
+					<section>
+						<h3>
+							Writing a Servant API
+						</h3>
+					</section>
+					<section>
+						<pre><code class="language-haskell" data-trim data-noescape>
+							import Servant ((:>), Get, JSON)
+
+							type TestAPI = "hello" :> "world" :> Get '[JSON] String
+						</code></pre>
+						<p>
+							'[JSON] defines the encodings we can use.
+						</p>
+						<p>
+							String says we will be returning a String to the user.
+						</p>
+					</section>
+					<section>
+						<p>
+							Multiple routes can be defined in a single type using
+						</p>
+						<p>
+							:<|>
+						</p>
+						<pre><code class="language-haskell" data-trim data-noescape>
+						import Servant ((:>), Get, JSON, (:<|>))
+
+						type Foo = "foo" :> Get '[JSON] ()
+						type Bar = "bar" :> Get '[JSON] ()
+
+						type FooBar = Foo :<|> Bar
+						type FooBar' =
+							"foo" :> Get '[JSON] () :<|>
+							"bar" :> Get '[JSON] ()
+						</code></pre>
+					</section>
+
+					<section>
+						<p>
+							Routes with a common root can be combined
+						</p>
+						<pre><code class="language-haskell" data-trim data-noescape>
+						type CommonPrefix = "prefix":> (Foo :<|> Bar)
+						</code></pre>
+						<p class="fragment">
+							This is especially useful for handling authentication
+						</p>
+					</section>
+				</section>
+				
+				<section>
+					<section>
+						<h3>Anatomy of a Servant server</h3>
+					</section>
+					<section>
+						<p>
+							Servant servers are usually split into 3 broad sections
+						</p>
+						<ul class="fragment">
+							<li>API type</li>
+							<li>Server function mapping</li>
+							<li>Application types and code</li>
+						</ul>
+					</section>
+					<section>
+						<h3>
+							The API Type
+						</h3>
+						<p>
+							What we looked at before
+						</p>
+						<ul>
+							<li>Routes</li>
+							<li>Path and Query Names</li>
+							<li>Body and Response Types</li>
+							<li>Encodings</li>
+							<li>Expected and Response Headers</li>
+							<li>Acceptable Methods</li>
+						</ul>
+					</section>
+					<section>
+						<p>
+							The API type is heavily dependent on typeclasses to handle encodings
+						</p>
+						<p>
+							Most basic types are handled for you
+						</p>
+						<p>
+							JSON encodings can be derived by the compiler or provided by hand
+						</p>
+					</section>
+					<section>
+						<h3>Server Function Mapping</h3>
+						<p>
+							Telling servant what to run
+						</p>
+						<p>
+							Uses the same combinators as the type definition
+						</p>
+					</section>
+					<section>
+						<pre><code class="language-haskell" data-trim data-noescape>
+						type FooBar =
+							"foo" :> Capture "x" Bool :> Get '[JSON] String :<|>
+							"bar" :> Get '[JSON] Integer
+
+						foo :: MonadIO m => Bool -> m String
+						foo = ...
+
+						bar :: MonadIO m => m Integer
+						bar = ...
+						
+						fooBarServer :: MonadIO m => ServerT FooBar m
+						fooBarServer = foo :<|> bar
+						</code></pre>
+					</section>
+					<section>
+						<p>
+							Rules of Thumb
+						</p>
+						<p>
+							Each top level type joined by :<|> requires a function
+						</p>
+						<p>
+							Values are passed in the order they are defined
+						</p>
+						<p>
+							Must all return the same `m`
+						</p>
+					</section>
+				</section>
+				<section>
+				Servant Client
+				Servant Swagger
+				Error handling
+			</section>
+
+				<section>
+					<section>
+						<h3>Links</h3>
+					</section>
+					<section>
+						Servant : docs.servant.dev
+						Hackage : hackage.haskell.org/package/servant
+						Slides  : github.com/lepsa/servant-talk
+					</section>
+				</section>
 			</div>
 		</div>
 
