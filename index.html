@@ -250,6 +250,67 @@
 							Must all return the same `m`
 						</p>
 					</section>
+					<section>
+						<h4>
+							Running a server
+						</h4>
+						<p>
+							servant-server is designed around the WAI specification
+						</p>
+						<p>
+							We'll be using the Warp server in this talk
+						</p>
+					</section>
+					<section>
+						<pre><code class="language-haskell" data-trim data-noescape>
+							serve :: HasServer api '[] =>
+								Proxy api -> ServerT api Handler -> Application
+						</code></pre>
+						<p>
+							turns an API and a server into a runnable Application
+						</p>
+						<p>
+							Handler is a monad that gives servant the functionality it needs to run requests							
+						</p>
+					</section>
+					<section>
+						<p>
+							Sometimes Handler is undesirable
+							<ul>
+								<li>IO free application code</li>
+								<li>Value passing with ReaderT</li>
+							</ul>
+						</p>
+						<pre><code class="language-haskell" data-trim data-noescape>
+							hoistServer :: HasServer api '[] =>
+							  Proxy api -> (forall x. m x -> n x) ->
+							  ServerT api m -> ServerT api n
+						</code></pre>
+						<p>
+							usually converting
+							<pre><code class="language-haskell" data-trim data-noescape>
+								ServerT api m -> ServerT api Handler
+							</code></pre>
+						</p>
+					</section>
+					<section>
+						<pre><code class="language-haskell" data-trim data-noescape>
+							type FooBar =
+							  "foo" :> Capture "x" Bool :> Get '[JSON] String :<|>
+							  "bar" :> Get '[JSON] Integer
+
+							fooBar       :: Proxy FooBar
+							foo          :: MonadIO m => Bool -> m String
+							bar          :: MonadIO m => m Integer
+							fooBarServer :: MonadIO m => ServerT FooBar m
+
+							app :: Application
+							app = serve fooBar fooBarServer
+
+							main :: IO ()
+							main = Network.Wai.Handler.Warp.run 8080 app
+						</code></pre>
+					</section>
 				</section>
 
 				<section>
@@ -363,7 +424,7 @@
 						<pre><code class="language-haskell" data-trim data-noescape>
 							data AppError
 							  = ErrorA ByteString
-								| ErrorB Int
+							  | ErrorB Int
 								
 							type AppM a = ExceptT AppError IO a
 							
