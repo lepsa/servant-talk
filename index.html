@@ -224,18 +224,16 @@
 					</section>
 					<section>
 						<pre><code class="language-haskell" data-trim data-noescape>
-						type FooBar =
-							"foo" :> Capture "x" Bool :> Get '[JSON] String :<|>
-							"bar" :> Get '[JSON] Integer
-
-						foo :: MonadIO m => Bool -> m String
-						foo = ...
-
-						bar :: MonadIO m => m Integer
-						bar = ...
-						
-						fooBarServer :: MonadIO m => ServerT FooBar m
-						fooBarServer = foo :<|> bar
+						  type FooBar =
+						  	"foo" :> Capture "x" Bool :> Get '[JSON] String :<|>
+						  	"bar" :> Get '[JSON] Integer
+  
+						  foo :: MonadIO m => Bool -> m String
+  
+						  bar :: MonadIO m => m Integer
+						  
+						  fooBarServer :: MonadIO m => ServerT FooBar m
+						  fooBarServer = foo :<|> bar
 						</code></pre>
 					</section>
 					<section>
@@ -259,7 +257,142 @@
 						<h4>Servant Clients</h4>
 					</section>
 					<section>
+						<p>
+							Clients are split into two parts
+						</p>
+						<ul>
+							<li>API type</li>
+							<li>ClientM functions</li>
+						</ul>
+					</section>
+					<section>
+						<p>
+							API clients are built around ClientM and runClientM
+						</p>
+						<p class="fragment">
+							ClientM represents a request and all that entails
+						</p>
+						<p class="fragment">
+							runClientM executes a request and returns results
+						</p>
+					</section>
+					<section>
+						<p>
+							Like servers, functions are extracted by patterns
+						</p>
+						<pre><code class="language-haskell" data-trim data-noescape>
+							type FooBar =
+							  "foo" :> Capture "x" Bool :> Get '[JSON] String :<|>
+							  "bar" :> Get '[JSON] Integer
+								
+							data ApiCalls =
+							  { foo :: Bool -> ClientM String
+							  , bar :: ClientM Integer
+							  }
 
+							apiCalls :: ApiCalls
+							apiCalls = ApiCalls foo bar
+							  where
+							    foo :<|> bar = client (Proxy :: Proxy FooBar)
+						</code></pre>
+					</section>
+					<section>
+						<p>
+							runClientM needs a ClientEnv
+						</p>
+						<p>
+							ClientEnv contains basic request data
+							<ul>
+								<li>Host</li>
+								<li>Cookies</li>
+								<li>TLS settings</li>
+								<li>Timeouts</li>
+							</ul>
+						</p>
+					</section>
+					<section>
+						<pre><code class="language-haskell" data-trim data-noescape>
+							manager = newManager defaultManagerSettings
+							baseUrl = BaseUrl Http "example.com" 80 "/"
+							clientEnv = mkClientEnv manager baseUrl
+						</code></pre>
+						<p class="fragment">
+							Putting the ClientEnv into a ReaderT is very helpful
+						</p>
+					</section>
+					<section>
+						<pre><code class="language-haskell" data-trim data-noescape>
+							type AppM m a = ReaderT ClientEnv (ExceptT ClientError m) a
+							
+							foo :: Bool -> ClientM String
+							
+							someAppFunction :: MonadIO m => AppM m a
+							someAppFunction = do
+							  env <- ask
+							  res <- runClientM (foo 10) env
+							  either throwError pure res
+						</code></pre>
+					</section>
+				</section>
+
+				<section>
+					<section>
+						<h4>
+							Error handling
+						</h4>
+					</section>
+					<section>
+						<p>
+							MonadError and ExceptT are your friends
+						</p>
+						<p class="fragment">
+							Servers use ServerError<br/>
+							Clients use ClientError
+						</p>
+						<p class="fragment">
+							Keeps clients and servers seperate
+						</p>
+					</section>
+					<section>
+						<p>
+							Server error handling
+						</p>
+						<p>
+							Application error types can be mapped using withExceptT
+						</p>
+						<pre><code class="language-haskell" data-trim data-noescape>
+							data AppError
+							  = ErrorA ByteString
+								| ErrorB Int
+								
+							type AppM a = ExceptT AppError IO a
+							
+							toServantError :: AppError -> ServerError
+							toServantError e = case e of
+							  ErrorA s -> err400 { errBody = s }
+							  ErrorB i -> err500 { errBody = pack $ show i }
+														
+							toHandler :: AppM a -> Handler a
+							toHandler = Handler . withExceptT toServantError
+						</code></pre>
+					</section>
+					<section>
+						<p>Client error handling</p>
+						<pre><code class="language-haskell" data-trim data-noescape>
+							toAppError :: ClientError -> AppError
+							toAppError (ConnectionError e) = AppException e
+							...
+
+							type AppM a = ExceptT AppError IO a
+
+							mapError :: ClientM a -> AppM a
+							mapError client = do
+							  e <- runClientM client env
+							  either
+							    (throwError . toAppError)
+							    pure
+							    e
+						</code></pre>
 					</section>
 				</section>
 
@@ -297,67 +430,7 @@
 
 				<section>
 					<section>
-						<h4>
-							Error handling
-						</h4>
-					</section>
-					<section>
-						<p>
-							MonadError is your friend
-						</p>
-						<p class="fragment">
-							Servers use ServerError<br/>
-							Clients use ClientError
-						</p>
-					</section>
-					<section>
-						<p>
-							Server error handling
-						</p>
-						<p>
-							Application error types can be mapped using withExceptT
-						</p>
-						<pre><code class="language-haskell" data-trim data-noescape>
-							data AppError
-							  = ErrorA ByteString
-								| ErrorB Int
-								
-							type AppM a = ExceptT AppError IO a
-							
-							toServantError :: AppError -> ServerError
-							toServantError e = case e of
-							  ErrorA s -> err400 { errBody = s }
-							  ErrorB i -> err500 { errBody = pack $ show i }
-														
-							toHandler :: AppM a -> Handler a
-							toHandler = Handler . withExceptT toServantError
-						</code></pre>
-					</section>
-					<section>
-						<p>Client error handling</p>
-						<pre><code class="language-haskell" data-trim data-noescape>
-							toAppError :: ClientError -> AppError
-							toAppError (ConnectionError e) = AppException e
-							...
-
-							type AppM a = ExceptT AppError IO a
-
-							mapError :: ClientM a -> AppM a
-							mapError client = do
-								e <- runClientM client env
-								either
-								  (throwError . toAppError)
-								  pure
-								  e
-						</code></pre>
-					</section>
-				</section>
-
-				<section>
-					<section>
 						<h4>Links</h4>
-					</section>
-					<section>
 						<dl>
 							<dt>Servant</dt>
 							<dd>docs.servant.dev</dd>
