@@ -346,7 +346,7 @@
 							  "foo" :> Capture "x" Bool :> Get '[JSON] String :<|>
 							  "bar" :> Get '[JSON] Integer
 								
-							data ApiCalls =
+							data ApiCalls = ApiCalls
 							  { foo :: Bool -> ClientM String
 							  , bar :: ClientM Integer
 							  }
@@ -374,7 +374,7 @@
 					<section>
 						<pre><code class="language-haskell" data-trim data-noescape>
 							manager = newManager defaultManagerSettings
-							baseUrl = BaseUrl Http "example.com" 80 "/"
+							baseUrl = BaseUrl Http "localhost" 8080 "/"
 							clientEnv = mkClientEnv manager baseUrl
 						</code></pre>
 						<p class="fragment">
@@ -474,17 +474,17 @@
 							{-# LANGUAGE DataKinds        #-}
 							{-# LANGUAGE TypeApplications #-}
 							module Main where
-							import           Data.Aeson                 (encode)
-							import           Data.ByteString.Lazy.Char8 (putStrLn)
-							import           Data.Proxy                 (Proxy (Proxy))
-							import           Endpoints                  (PublicAPI)
-							import           Prelude                    (IO, ($), (.))
-							import           Servant.Auth               (Cookie, JWT)
-							import           Servant.Auth.Swagger       ()
-							import           Servant.Swagger            (toSwagger)
-							main :: IO ()
-							main = putStrLn . encode $
-								toSwagger @(PublicAPI '[JWT, Cookie]) Proxy
+							import Data.Aeson
+							import Data.ByteString.Lazy.Char8
+							import Data.Proxy
+							import Servant
+							import Servant.Swagger 
+							
+							type FooBar =
+								"foo" :> Capture "x" Bool :> Get '[JSON] String :<|>
+								"bar" :> Get '[JSON] Integer
+							
+							main = putStrLn . encode $ toSwagger @(FooBar) Proxy
 						</code></pre>
 					</section>
 				</section>
