@@ -301,6 +301,56 @@
 							Error handling
 						</h4>
 					</section>
+					<section>
+						<p>
+							MonadError is your friend
+						</p>
+						<p class="fragment">
+							Servers use ServerError<br/>
+							Clients use ClientError
+						</p>
+					</section>
+					<section>
+						<p>
+							Server error handling
+						</p>
+						<p>
+							Application error types can be mapped using withExceptT
+						</p>
+						<pre><code class="language-haskell" data-trim data-noescape>
+							data AppError
+							  = ErrorA ByteString
+								| ErrorB Int
+								
+							type AppM a = ExceptT AppError IO a
+							
+							toServantError :: AppError -> ServerError
+							toServantError e = case e of
+							  ErrorA s -> err400 { errBody = s }
+							  ErrorB i -> err500 { errBody = pack $ show i }
+														
+							toHandler :: AppM a -> Handler a
+							toHandler = Handler . withExceptT toServantError
+						</code></pre>
+					</section>
+					<section>
+						<p>Client error handling</p>
+						<pre><code class="language-haskell" data-trim data-noescape>
+							toAppError :: ClientError -> AppError
+							toAppError (ConnectionError e) = AppException e
+							...
+
+							type AppM a = ExceptT AppError IO a
+
+							mapError :: ClientM a -> AppM a
+							mapError client = do
+								e <- runClientM client env
+								either
+								  (throwError . toAppError)
+								  pure
+								  e
+						</code></pre>
+					</section>
 				</section>
 
 				<section>
