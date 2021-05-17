@@ -373,9 +373,11 @@
 					</section>
 					<section>
 						<pre><code class="language-haskell" data-trim data-noescape>
-							manager = newManager defaultManagerSettings
-							baseUrl = BaseUrl Http "localhost" 8080 "/"
-							clientEnv = mkClientEnv manager baseUrl
+							clientEnv :: IO ClientEnv
+							clientEnv = do
+							  manager <- newManager defaultManagerSettings
+							  let baseUrl = BaseUrl Http "localhost" 8080 ""
+							  pure $ mkClientEnv manager baseUrl
 						</code></pre>
 						<p class="fragment">
 							Putting the ClientEnv into a ReaderT is very helpful
@@ -384,13 +386,18 @@
 					<section>
 						<pre><code class="language-haskell" data-trim data-noescape>
 							type AppM m a = ReaderT ClientEnv (ExceptT ClientError m) a
-							
-							foo :: Bool -> ClientM String
-							
-							someAppFunction :: MonadIO m => AppM m a
-							someAppFunction = do
+							getFoo :: MonadIO m => AppM m String
+							getFoo = do
 							  env <- ask
-							  res <- runClientM (foo 10) env
+							  res <- liftIO $ runClientM (foo apiCalls True) env
+							  either throwError pure res
+							getBar          :: MonadIO m => AppM m Integer
+							someAppFunction :: MonadIO m => AppM m (String, Integer)
+							
+							main :: IO ()
+							main = do
+							  env <- clientEnv
+							  res <- runExceptT $ runReaderT someAppFunction clientEnv
 							  either throwError pure res
 						</code></pre>
 					</section>

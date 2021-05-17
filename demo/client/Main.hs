@@ -47,10 +47,14 @@ getBar = do
 someAppFunction :: MonadIO m => AppM m (String, Integer)
 someAppFunction = (,) <$> getFoo <*> getBar
 
-main :: IO ()
-main = do
+clientEnv :: IO ClientEnv
+clientEnv = do
   manager <- newManager defaultManagerSettings
   let baseUrl = BaseUrl Http "localhost" 8080 ""
-      clientEnv = mkClientEnv manager baseUrl 
-  e <- runExceptT $ runReaderT someAppFunction clientEnv
-  putStrLn $ show e
+  pure $ mkClientEnv manager baseUrl 
+
+main :: IO ()
+main = do
+  env <- clientEnv
+  res <- runExceptT $ runReaderT someAppFunction env
+  print res
