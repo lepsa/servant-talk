@@ -19,20 +19,26 @@
 				<section>
 					APIs in Servant
 				</section>
-				<section data-markdown>
-					<textarea data-template>
-							### Who am I?
-	
-							Owen Harvey
-	
-							Software Developer
-	
-							CSIRO Data61: E&amp;D
-						</textarea>
+				<section>
+					<h3>
+						Who am I?
+					</h3>
+					<p>
+						Owen Harvey
+					</p>
+					<p>
+						Software Developer
+					</p>
+					<p>
+						CSIRO Data61: E&amp;D
+					</p>
 				</section>
 
 				<section>
 					<section>
+						<h4>
+							Assumed Knowledge
+						</h4>
 						<p>
 							Servant requires a fair degree of comfort with some advanced Haskell concepts.
 						</p>
@@ -41,15 +47,15 @@
 						<p>
 							Assumptions going into this talk
 							<ul>
-								<li>Know about typeclasses</li>
-								<li>Not afraid of mtl/transformers</li>
-								<li>Willing to handwave some advanced haskell extensions</li>
+								<li>Typeclasses</li>
+								<li>mtl/transformers</li>
+								<li>handwaving extensions</li>
 							</ul>
 						</p>
 					</section>
 					<section>
 						<p>
-							You can safely assume this throughout
+							Assume this throughout
 						</p>
 						<pre><code class="language-haskell" data-trim data-noescape>
 							{-# LANGUAGE DataKinds             #-}
@@ -65,17 +71,17 @@
 
 				<section>
 					<section>
-						<h3>
+						<h4>
 							What is Servant
-						</h3>
+						</h4>
 						<p class="fragment" >
-							Servant is a type driven library for writing web clients and servers
+							Type driven library for writing web clients and servers
 						</p>
 					</section>
 					<section>
-						<h3>
+						<h4>
 							Why you should care
-						</h3>
+						</h4>
 						<p>
 							<ul>
 								<li>
@@ -97,13 +103,13 @@
 
 				<section>
 					<section>
-						<h3>
+						<h4>
 							How Servant Works
-						</h3>
+						</h4>
 					</section>
 					<section>
 						<p>
-							Servant is built around a set of combinators for building an API
+							Built around a set of combinators for building an API
 						</p>
 						<p>
 							Path, Query, Body, Method, Headers, etc.
@@ -116,9 +122,9 @@
 
 				<section>
 					<section>
-						<h3>
+						<h4>
 							Writing a Servant API
-						</h3>
+						</h4>
 					</section>
 					<section>
 						<pre><code class="language-haskell" data-trim data-noescape>
@@ -168,7 +174,7 @@
 				
 				<section>
 					<section>
-						<h3>Anatomy of a Servant server</h3>
+						<h4>Anatomy of a Servant server</h4>
 					</section>
 					<section>
 						<p>
@@ -181,9 +187,9 @@
 						</ul>
 					</section>
 					<section>
-						<h3>
+						<h4>
 							The API Type
-						</h3>
+						</h4>
 						<p>
 							What we looked at before
 						</p>
@@ -198,17 +204,17 @@
 					</section>
 					<section>
 						<p>
-							The API type is heavily dependent on typeclasses to handle encodings
+							Heavily dependent on typeclasses to handle encodings
 						</p>
 						<p>
 							Most basic types are handled for you
 						</p>
 						<p>
-							JSON encodings can be derived by the compiler or provided by hand
+							Some encodings can be derived by the compiler or provided by hand
 						</p>
 					</section>
 					<section>
-						<h3>Server Function Mapping</h3>
+						<h4>Server Function Mapping</h4>
 						<p>
 							Telling servant what to run
 						</p>
@@ -247,19 +253,66 @@
 						</p>
 					</section>
 				</section>
-				<section>
-				Servant Client
-				Servant Swagger
-				Error handling
-			</section>
 
 				<section>
 					<section>
-						<h3>Links</h3>
+						<h4>Servant Clients</h4>
+					</section>
+					<section>
+
+					</section>
+				</section>
+
+				<section>
+					<section>
+						<h4>Swagger</h4>
+					</section>
+					<section>
+						<p>
+							Automatic Swagger/OpenAPI generation
+						</p>
+						<p>
+							Completely type driven
+						</p>
+					</section>
+					<section>
+						<pre><code class="language-haskell" data-trim data-noescape>
+							{-# LANGUAGE DataKinds        #-}
+							{-# LANGUAGE TypeApplications #-}
+							module Main where
+							import           Data.Aeson                 (encode)
+							import           Data.ByteString.Lazy.Char8 (putStrLn)
+							import           Data.Proxy                 (Proxy (Proxy))
+							import           Endpoints                  (PublicAPI)
+							import           Prelude                    (IO, ($), (.))
+							import           Servant.Auth               (Cookie, JWT)
+							import           Servant.Auth.Swagger       ()
+							import           Servant.Swagger            (toSwagger)
+							main :: IO ()
+							main = putStrLn . encode $
+								toSwagger @(PublicAPI '[JWT, Cookie]) Proxy
+						</code></pre>
+					</section>
+				</section>
+
+				<section>
+					<section>
+						<h4>
+							Error handling
+						</h4>
+					</section>
+				</section>
+
+				<section>
+					<section>
+						<h4>Links</h4>
 					</section>
 					<section>
 						Servant : docs.servant.dev
 						Hackage : hackage.haskell.org/package/servant
+											hackage.haskell.org/package/servant-server
+											hackage.haskell.org/package/servant-client
+											hackage.haskell.org/package/servant-swagger
 						Slides  : github.com/lepsa/servant-talk
 					</section>
 				</section>
