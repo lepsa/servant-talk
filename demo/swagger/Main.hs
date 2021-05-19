@@ -10,10 +10,11 @@ import Data.Proxy
 import Servant
 import Servant.Swagger 
 
-type FooBar =
+type FooBarAPI =
   "foo" :> Capture "x" Bool :> Get '[JSON] String :<|>
-  "bar" :> Get '[JSON] Integer
+  "bar" :> Get '[JSON] Integer :<|>
+  "baz" :> ReqBody '[JSON] [String] :> Post '[JSON] [String]
 
 main :: IO ()
 main = Data.ByteString.Lazy.Char8.putStrLn . encode $
-  toSwagger @(FooBar) Proxy
+  toSwagger @(FooBarAPI) Proxy

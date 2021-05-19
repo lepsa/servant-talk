@@ -16,19 +16,22 @@ import Network.HTTP.Client (newManager, defaultManagerSettings)
 import Servant.API
 import Servant.Client
 
-type FooBar =
+type FooBarAPI =
   "foo" :> Capture "x" Bool :> Get '[JSON] String :<|>
-  "bar" :> Get '[JSON] Integer
+  "bar" :> Get '[JSON] Integer :<|>
+  "baz" :> ReqBody '[JSON] [String] :> Post '[JSON] [String]
+
 
 data ApiCalls = ApiCalls
   { foo :: Bool -> ClientM String
   , bar :: ClientM Integer
+  , baz :: [String] -> ClientM [String]
   }
 
 apiCalls :: ApiCalls
-apiCalls = ApiCalls foo bar
+apiCalls = ApiCalls foo bar baz
   where
-    foo :<|> bar = client (Proxy :: Proxy FooBar)
+    foo :<|> bar :<|> baz = client (Proxy :: Proxy FooBarAPI)
 
 type AppM m a = ReaderT ClientEnv (ExceptT ClientError m) a
 
@@ -44,8 +47,14 @@ getBar = do
   res <- liftIO $ runClientM (bar apiCalls) env
   either throwError pure res
 
-someAppFunction :: MonadIO m => AppM m (String, Integer)
-someAppFunction = (,) <$> getFoo <*> getBar
+postBaz :: MonadIO m => [String] -> AppM m [String]
+postBaz l = do
+  env <- ask
+  res <- liftIO $ runClientM (baz apiCalls l) env
+  either throwError pure res
+
+someAppFunction :: MonadIO m => AppM m (String, Integer, [String])
+someAppFunction = (,,) <$> getFoo <*> getBar <*> postBaz ["a", "b", "c"]
 
 clientEnv :: IO ClientEnv
 clientEnv = do

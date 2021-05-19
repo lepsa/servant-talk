@@ -130,8 +130,13 @@
 						<pre><code class="language-haskell" data-trim data-noescape>
 							import Servant ((:>), Get, JSON)
 
+							-- create an endpoint at /hello/world
+							-- GET /hello/world returns a JSON String
 							type TestAPI = "hello" :> "world" :> Get '[JSON] String
 						</code></pre>
+            <p>
+              :> joins segments into a route
+            </p>
 						<p>
 							'[JSON] defines the encodings we can use.
 						</p>
@@ -151,11 +156,14 @@
 
 						type Foo = "foo" :> Get '[JSON] ()
 						type Bar = "bar" :> Get '[JSON] ()
-
-						type FooBar = Foo :<|> Bar
-						type FooBar' =
-							"foo" :> Get '[JSON] () :<|>
-							"bar" :> Get '[JSON] ()
+						type Baz = "baz" :> Post '[JSON] ()
+						
+						-- These are identical
+						type FooBarAPI = Foo :<|> Bar :<|> Baz
+						type FooBarAPI =
+						  "foo" :> Get '[JSON] () :<|>
+						  "bar" :> Get '[JSON] () :<|>
+						  "baz" :> Post '[JSON] ()
 						</code></pre>
 					</section>
 
@@ -164,7 +172,7 @@
 							Routes with a common root can be combined
 						</p>
 						<pre><code class="language-haskell" data-trim data-noescape>
-						type CommonPrefix = "prefix":> (Foo :<|> Bar)
+						type CommonPrefix = "prefix":> (Foo :<|> Bar :<|> Baz)
 						</code></pre>
 						<p class="fragment">
 							This is especially useful for handling authentication
@@ -196,13 +204,56 @@
 						<ul>
 							<li>Routes</li>
 							<li>Path and Query Names</li>
-							<li>Body and Response Types</li>
+							<li>Request Body</li>
 							<li>Encodings</li>
-							<li>Expected and Response Headers</li>
-							<li>Acceptable Methods</li>
+							<li>Methods</li>
+							<li>Headers</li>
 						</ul>
 					</section>
 					<section>
+						<h4>Routes</h4>
+						<p>
+							Defined using the combinator :>
+						</p>
+						<p>
+							Joined by :<|> to form a larger API
+						</p>
+					</section>
+					<section>
+						<h4>Path and Query Names</h4>
+						<p>
+							Capture and QueryParam
+						</p>
+						<p>
+							Capture "name" Type : Required value
+						</p>
+						<p>
+							QueryParam "name" Type : Optional Value
+						</p>
+					</section>
+					<section>
+						<h4>Request Body</h4>
+						<p>
+							ReqBody '[Encodings] Type
+						</p>
+						<p>
+							Takes a list of acceptable encodings and a type to decode to
+						</p>
+					</section>
+					<section>
+						<h4>Encodings</h4>
+						<p>
+							Represent the Accept and Content-Type headers
+						</p>
+						<p>
+							Defined in lists of formats passed to other combinators
+						</p>
+						<p>
+							'[JSON, PlainText, OctetStream]
+						</p>
+					</section>
+					<section>
+						<h4>Encodings</h4>
 						<p>
 							Heavily dependent on typeclasses to handle encodings
 						</p>
@@ -211,6 +262,54 @@
 						</p>
 						<p>
 							Some encodings can be derived by the compiler or provided by hand
+						</p>
+					</section>
+					<section>
+						<h4>Encodings</h4>
+						<p>
+							<dl>
+								<dt>JSON</dt>
+								<dd>ToJSON a / FromJSON a</dd>
+								<dt>PlainText</dt>
+								<dd>String and Text</dd>
+								<dt>FormUrlEncoded</dt>
+								<dd>FromForm a / ToForm a</dd>
+								<dt>OctetStream</dt>
+								<dd>ByteString</dd>
+							</dl>
+						</p>
+					</section>
+					<section>
+						<h4>Acceptable Methods</h4>
+						<p>
+							Methods for a route mirror the HTTP verb
+						</p>
+						<p>
+							Get, Put, Delete, GetNoContent
+						</p>
+						<p>
+							Takes both a set of response encodings and a type for the content
+						</p>
+					</section>
+					<section>
+						<h4>Request Headers</h4>
+						<p>
+							Header "name" Type
+						</p>
+						<p>
+							Captures an optional header from a request
+						</p>
+					</section>
+					<section>
+						<h4>Response Headers</h4>
+						<p>
+							Wrapper over the route response type
+						</p>
+						<p>
+							Headers '[Header "a" Type] ResponseType
+						</p>
+						<p>
+							Can defined multiple headers at once
 						</p>
 					</section>
 					<section>
@@ -224,16 +323,17 @@
 					</section>
 					<section>
 						<pre><code class="language-haskell" data-trim data-noescape>
-						  type FooBar =
-						  	"foo" :> Capture "x" Bool :> Get '[JSON] String :<|>
-						  	"bar" :> Get '[JSON] Integer
+						  type FooBarAPI =
+							  "foo" :> Capture "x" Bool :> Get '[JSON] String :<|>
+							  "bar" :> Get '[JSON] Integer :<|>
+							  "baz" :> ReqBody '[JSON] [String] :> Post '[JSON] [String]
   
 						  foo :: MonadIO m => Bool -> m String
-  
 						  bar :: MonadIO m => m Integer
+						  baz :: MonadIO m => [String] -> m [String]
 						  
-						  fooBarServer :: MonadIO m => ServerT FooBar m
-						  fooBarServer = foo :<|> bar
+						  fooBarServer :: MonadIO m => ServerT FooBarAPI m
+						  fooBarServer = foo :<|> bar :<|> baz
 						</code></pre>
 					</section>
 					<section>
@@ -264,7 +364,7 @@
 					<section>
 						<pre><code class="language-haskell" data-trim data-noescape>
 							serve :: HasServer api '[] =>
-								Proxy api -> ServerT api Handler -> Application
+							  Proxy api -> ServerT api Handler -> Application
 						</code></pre>
 						<p>
 							turns an API and a server into a runnable Application
@@ -295,19 +395,19 @@
 					</section>
 					<section>
 						<pre><code class="language-haskell" data-trim data-noescape>
-							type FooBar =
+							type FooBarAPI =
 							  "foo" :> Capture "x" Bool :> Get '[JSON] String :<|>
-							  "bar" :> Get '[JSON] Integer
+							  "bar" :> Get '[JSON] Integer :<|>
+							  "baz" :> ReqBody '[JSON] [String] :> Post '[JSON] [String]
 
-							fooBar       :: Proxy FooBar
+							fooBarAPI    :: Proxy FooBarAPI
 							foo          :: MonadIO m => Bool -> m String
 							bar          :: MonadIO m => m Integer
-							fooBarServer :: MonadIO m => ServerT FooBar m
+							baz          :: MonadIO m => [String] -> m [String]
+							fooBarServer :: MonadIO m => ServerT FooBarAPI m
 
-							app :: Application
-							app = serve fooBar fooBarServer
+							app = serve fooBarAPI fooBarServer
 
-							main :: IO ()
 							main = Network.Wai.Handler.Warp.run 8080 app
 						</code></pre>
 					</section>
@@ -342,19 +442,20 @@
 							Like servers, functions are extracted by patterns
 						</p>
 						<pre><code class="language-haskell" data-trim data-noescape>
-							type FooBar =
+							type FooBarAPI =
 							  "foo" :> Capture "x" Bool :> Get '[JSON] String :<|>
-							  "bar" :> Get '[JSON] Integer
+							  "bar" :> Get '[JSON] Integer :<|>
+							  "baz" :> ReqBody '[JSON] [String] :> Post '[JSON] [String]
 								
 							data ApiCalls = ApiCalls
 							  { foo :: Bool -> ClientM String
 							  , bar :: ClientM Integer
+							  , baz :: [String] -> ClientM [String]
 							  }
-
-							apiCalls :: ApiCalls
+							
 							apiCalls = ApiCalls foo bar
 							  where
-							    foo :<|> bar = client (Proxy :: Proxy FooBar)
+							    foo :<|> bar :<|> baz = client (Proxy :: Proxy FooBarAPI)
 						</code></pre>
 					</section>
 					<section>
@@ -392,9 +493,9 @@
 							  res <- liftIO $ runClientM (foo apiCalls True) env
 							  either throwError pure res
 							getBar          :: MonadIO m => AppM m Integer
-							someAppFunction :: MonadIO m => AppM m (String, Integer)
+							postBaz         :: MonadIO m => AppM m [String]
+							someAppFunction :: MonadIO m => AppM m (String, ...)
 							
-							main :: IO ()
 							main = do
 							  env <- clientEnv
 							  res <- runExceptT $ runReaderT someAppFunction clientEnv
@@ -478,23 +579,50 @@
 					</section>
 					<section>
 						<pre><code class="language-haskell" data-trim data-noescape>
-							{-# LANGUAGE DataKinds        #-}
-							{-# LANGUAGE TypeApplications #-}
 							module Main where
+							
 							import Data.Aeson
 							import Data.ByteString.Lazy.Char8
 							import Data.Proxy
 							import Servant
 							import Servant.Swagger 
 							
-							type FooBar =
-								"foo" :> Capture "x" Bool :> Get '[JSON] String :<|>
-								"bar" :> Get '[JSON] Integer
+							type FooBarAPI =
+							  "foo" :> Capture "x" Bool :> Get '[JSON] String :<|>
+							  "bar" :> Get '[JSON] Integer :<|>
+							  "baz" :> ReqBody '[JSON] [String] :> Post '[JSON] [String]
 							
-							main = putStrLn . encode $ toSwagger @(FooBar) Proxy
+							main = putStrLn . encode $ toSwagger @(FooBarAPI) Proxy
 						</code></pre>
 					</section>
 				</section>
+
+				<section>
+					<section>
+						<h4>
+							Other Cool Things
+						</h4>
+					</section>
+					<section>
+						<h4>JS client generation</h4>
+						<p>
+							<pre><code class="language-haskell" data-trim data-noescape>
+							apiJS :: Text
+							apiJS = jsForAPI api vanillaJS
+							</code></pre>
+							apiJS will contain the generated code
+							<pre><code class="language-haskell" data-trim data-noescape>
+								var getPoint = function(onSuccess, onError)
+								{
+								  var xhr = new XMLHttpRequest();
+								  xhr.open('GET', '/point', true);
+								  ...
+							</code></pre>
+							This works with jQuery, vanillaJS (XMLHttpRequest), Axios, and Angular
+						</p>
+					</section>
+				</section>
+
 
 				<section>
 					<section>
@@ -507,7 +635,8 @@
 								hackage.haskell.org/package/servant<br/>
 								hackage.haskell.org/package/servant-server<br/>
 								hackage.haskell.org/package/servant-client<br/>
-								hackage.haskell.org/package/servant-swagger
+								hackage.haskell.org/package/servant-swagger<br/>
+								hackage.haskell.org/package/servant-js
 							</dd>
 							<dt>Slides</dt>
 							<dd>github.com/lepsa/servant-talk</dd>
